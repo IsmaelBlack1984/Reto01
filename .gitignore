@@ -1,0 +1,9 @@
+# Excluir archivos del sistema operativo y el IDE
+.DS_Store
+.classpath
+.project
+.settings/
+target/
+
+# Excluir archivos específicos de configuración del entorno
+*.iml
