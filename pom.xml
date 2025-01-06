@@ -1,0 +1,44 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Información del proyecto -->
+    <groupId>com.reto01</groupId>
+    <artifactId>estudiante-java-springboot</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>estudiante-java-springboot</name>
+    <description>Proyecto base para una aplicación Spring Boot</description>
+
+    <!-- Configuración de la versión de Spring Boot -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.0.0</version> <!-- Usa la versión adecuada de Spring Boot -->
+        <relativePath/> <!-- Se puede omitir si no se necesita -->
+    </parent>
+
+    <dependencies>
+        <!-- Dependencia para usar Spring Boot Web -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- Dependencia para las pruebas -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Plugin de Spring Boot para empaquetar y ejecutar la aplicación -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
