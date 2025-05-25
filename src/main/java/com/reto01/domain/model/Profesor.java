@@ -1,4 +1,4 @@
-package com.reto01.model;
+package com.reto01.domain.model;
 
 import java.util.List;
 
