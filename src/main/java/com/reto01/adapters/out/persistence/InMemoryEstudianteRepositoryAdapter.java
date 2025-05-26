@@ -1,19 +1,18 @@
-package com.reto01.repository;
+package com.reto01.adapters.out.persistence;
 
 import org.springframework.stereotype.Repository;
-
-import com.reto01.model.Estudiante;
-
+import com.reto01.domain.model.Estudiante;
+import com.reto01.domain.port.out.EstudianteRepositoryPort;
 import java.util.ArrayList;
 import java.util.List;
 
 @Repository
-public class RepositorioEstudiante {
+public class InMemoryEstudianteRepositoryAdapter implements EstudianteRepositoryPort {
 
     private List<Estudiante> estudiantes;
 
-    // Constructor 
-    public RepositorioEstudiante() {
+    // Constructor
+    public InMemoryEstudianteRepositoryAdapter() {
         estudiantes = new ArrayList<>();
         inicializarEstudiantes();
     }
@@ -32,7 +31,7 @@ public class RepositorioEstudiante {
         estudiantes.add(new Estudiante("132", "Isabel Rodríguez", "888888888", "isabel@email.com", 7.3, "Inglés", "Seminario Literatura"));
     }
 
-
+    @Override
     public List<Estudiante> getEstudiantes() {
         return estudiantes;
     }
