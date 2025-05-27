@@ -5,6 +5,8 @@ import com.reto01.domain.model.Estudiante;
 import com.reto01.domain.port.out.EstudianteRepositoryPort;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.Comparator;
 
 @Repository
 public class InMemoryEstudianteRepositoryAdapter implements EstudianteRepositoryPort {
@@ -34,5 +36,26 @@ public class InMemoryEstudianteRepositoryAdapter implements EstudianteRepository
     @Override
     public List<Estudiante> getEstudiantes() {
         return estudiantes;
+    }
+
+    @Override
+    public List<Estudiante> findByNombre(String nombre) {
+        return estudiantes.stream()
+                .filter(estudiante -> estudiante.getNombre().equalsIgnoreCase(nombre))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Estudiante> findByNumeroCelular(String numeroCelular) {
+        return estudiantes.stream()
+                .filter(estudiante -> estudiante.getNumeroCelular().equals(numeroCelular))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Estudiante> findAllByOrderByPromedioNotasDesc() {
+        return estudiantes.stream()
+                .sorted(Comparator.comparingDouble(Estudiante::getPromedioNotas).reversed())
+                .collect(Collectors.toList());
     }
 }
