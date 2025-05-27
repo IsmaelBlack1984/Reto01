@@ -3,6 +3,7 @@ package com.reto01.adapters.out.persistence;
 import org.springframework.stereotype.Repository;
 import com.reto01.domain.model.Estudiante;
 import com.reto01.domain.port.out.EstudianteRepositoryPort;
+import com.reto01.domain.specification.Specification; // Added import
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -56,6 +57,19 @@ public class InMemoryEstudianteRepositoryAdapter implements EstudianteRepository
     public List<Estudiante> findAllByOrderByPromedioNotasDesc() {
         return estudiantes.stream()
                 .sorted(Comparator.comparingDouble(Estudiante::getPromedioNotas).reversed())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Estudiante> find(Specification<Estudiante> spec) {
+        if (spec == null) {
+            // O podrías optar por devolver todos los estudiantes o lanzar una excepción,
+            // dependiendo de la semántica deseada para una especificación nula.
+            // Devolver una lista vacía o todos los estudiantes es más seguro que null.
+            return new ArrayList<>(this.estudiantes); // Devuelve una copia para evitar modificaciones externas
+        }
+        return this.estudiantes.stream()
+                .filter(spec::isSatisfiedBy) // Equivalente a .filter(estudiante -> spec.isSatisfiedBy(estudiante))
                 .collect(Collectors.toList());
     }
 }

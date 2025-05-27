@@ -3,6 +3,7 @@ package com.reto01.domain.service;
 import com.reto01.domain.model.Estudiante;
 import com.reto01.domain.port.in.EstudianteUseCase;
 import com.reto01.domain.port.out.EstudianteRepositoryPort;
+import com.reto01.domain.specification.Specification; // Added import
 
 import java.util.List;
 
@@ -33,5 +34,10 @@ public class EstudianteServiceImpl implements EstudianteUseCase {
     @Override
     public List<Estudiante> ordenarPorPromedioNotas() {
         return estudianteRepositoryPort.findAllByOrderByPromedioNotasDesc();
+    }
+
+    @Override
+    public List<Estudiante> buscarEstudiantesPorCriterio(Specification<Estudiante> spec) {
+        return estudianteRepositoryPort.find(spec);
     }
 }

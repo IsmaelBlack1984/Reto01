@@ -1,6 +1,9 @@
 package com.reto01.domain.service;
 
 import com.reto01.domain.model.Estudiante;
+import com.reto01.domain.specification.Specification; // Nueva importación
+import com.reto01.domain.specification.estudiante.NombreEqualsSpecification; // Nueva importación
+// import static org.mockito.ArgumentMatchers.any; // any() no se usa directamente en los nuevos tests, pero es bueno tenerlo
 import com.reto01.domain.port.out.EstudianteRepositoryPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +31,67 @@ class EstudianteServiceImplTest {
     }
 
     // Aquí se agregarán los métodos de prueba más adelante
+
+    @Test
+    void buscarEstudiantesPorCriterio_conEspecificacionNombre_debeLlamarAlRepositorioYDevolverResultado() {
+        // Arrange
+        String nombreBusqueda = "Laura";
+        Specification<Estudiante> spec = new NombreEqualsSpecification(nombreBusqueda);
+        
+        List<Estudiante> estudiantesEsperados = new ArrayList<>();
+        estudiantesEsperados.add(new Estudiante("001", "Laura", "123", "laura@test.com", 8.0, "Arte", "Pintura"));
+        
+        when(estudianteRepositoryPort.find(spec)).thenReturn(estudiantesEsperados);
+
+        // Act
+        List<Estudiante> resultado = estudianteService.buscarEstudiantesPorCriterio(spec);
+
+        // Assert
+        assertEquals(estudiantesEsperados, resultado);
+        assertEquals(1, resultado.size());
+        assertEquals("Laura", resultado.get(0).getNombre());
+        verify(estudianteRepositoryPort, times(1)).find(spec);
+    }
+
+    @Test
+    void buscarEstudiantesPorCriterio_conEspecificacionNula_debeLlamarAlRepositorioYDevolverResultado() {
+        // Arrange
+        Specification<Estudiante> spec = null; // O una especificación que el repo trate como "todos"
+        
+        List<Estudiante> todosLosEstudiantes = new ArrayList<>();
+        todosLosEstudiantes.add(new Estudiante("001", "Laura", "123", "laura@test.com", 8.0, "Arte", "Pintura"));
+        todosLosEstudiantes.add(new Estudiante("002", "Carlos", "456", "carlos@test.com", 9.0, "Musica", "Guitarra"));
+
+        // Asumimos que el puerto del repositorio (y su mock) devolverá todos los estudiantes si la spec es null,
+        // basándonos en la implementación de InMemoryEstudianteRepositoryAdapter.find(null)
+        when(estudianteRepositoryPort.find(null)).thenReturn(todosLosEstudiantes);
+
+        // Act
+        List<Estudiante> resultado = estudianteService.buscarEstudiantesPorCriterio(spec);
+
+        // Assert
+        assertEquals(todosLosEstudiantes, resultado);
+        assertEquals(2, resultado.size());
+        verify(estudianteRepositoryPort, times(1)).find(null);
+    }
+
+    @Test
+    void buscarEstudiantesPorCriterio_conEspecificacionQueNoEncuentraNada_debeDevolverListaVacia() {
+        // Arrange
+        String nombreBusqueda = "NombreInexistente";
+        Specification<Estudiante> spec = new NombreEqualsSpecification(nombreBusqueda);
+        
+        List<Estudiante> listaVacia = new ArrayList<>();
+        
+        when(estudianteRepositoryPort.find(spec)).thenReturn(listaVacia);
+
+        // Act
+        List<Estudiante> resultado = estudianteService.buscarEstudiantesPorCriterio(spec);
+
+        // Assert
+        assertTrue(resultado.isEmpty());
+        verify(estudianteRepositoryPort, times(1)).find(spec);
+    }
 
     @Test
     void listarEstudiantes_debeLlamarAlRepositorio() {
