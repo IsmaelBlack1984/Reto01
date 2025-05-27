@@ -15,7 +15,6 @@ public class EstudianteController {
 
     private final EstudianteUseCase estudianteUseCase;
 
-    @Autowired
     public EstudianteController(EstudianteUseCase estudianteUseCase) {
         this.estudianteUseCase = estudianteUseCase;
     }
