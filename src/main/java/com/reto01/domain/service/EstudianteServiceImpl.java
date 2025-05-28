@@ -3,10 +3,11 @@ package com.reto01.domain.service;
 import com.reto01.domain.model.Estudiante;
 import com.reto01.domain.port.in.EstudianteUseCase;
 import com.reto01.domain.port.out.EstudianteRepositoryPort;
+import com.reto01.domain.specification.Specification;
+import com.reto01.domain.specification.estudiante.NombreEqualsSpecification;
+import com.reto01.domain.specification.estudiante.NumeroCelularEqualsSpecification; // Nueva importación
 
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.Comparator;
 
 public class EstudianteServiceImpl implements EstudianteUseCase {
 
@@ -24,22 +25,23 @@ public class EstudianteServiceImpl implements EstudianteUseCase {
 
     @Override
     public List<Estudiante> filtrarPorNombre(String nombre) {
-        return estudianteRepositoryPort.getEstudiantes().stream()
-                .filter(estudiante -> estudiante.getNombre().equalsIgnoreCase(nombre))
-                .collect(Collectors.toList());
+        Specification<Estudiante> spec = new NombreEqualsSpecification(nombre);
+        return buscarEstudiantesPorCriterio(spec);
     }
 
     @Override
     public List<Estudiante> filtrarPorNumeroCelular(String numeroCelular) {
-        return estudianteRepositoryPort.getEstudiantes().stream()
-                .filter(estudiante -> estudiante.getNumeroCelular().equals(numeroCelular))
-                .collect(Collectors.toList());
+        Specification<Estudiante> spec = new NumeroCelularEqualsSpecification(numeroCelular);
+        return buscarEstudiantesPorCriterio(spec);
     }
 
     @Override
     public List<Estudiante> ordenarPorPromedioNotas() {
-        return estudianteRepositoryPort.getEstudiantes().stream()
-                .sorted(Comparator.comparingDouble(Estudiante::getPromedioNotas).reversed())
-                .collect(Collectors.toList());
+        return estudianteRepositoryPort.findAllByOrderByPromedioNotasDesc();
+    }
+
+    @Override
+    public List<Estudiante> buscarEstudiantesPorCriterio(Specification<Estudiante> spec) {
+        return estudianteRepositoryPort.find(spec);
     }
 }

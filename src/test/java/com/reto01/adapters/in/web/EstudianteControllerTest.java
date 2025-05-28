@@ -2,6 +2,7 @@ package com.reto01.adapters.in.web;
 
 import com.reto01.domain.model.Estudiante;
 import com.reto01.domain.port.in.EstudianteUseCase;
+import com.reto01.domain.specification.Specification; // Nueva importación
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -13,6 +14,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any; // Asegurar que está presente
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.hamcrest.Matchers.hasSize;
@@ -117,5 +119,48 @@ class EstudianteControllerTest {
                 .andExpect(jsonPath("$[1].nombre", is("Ana")));
 
         verify(estudianteUseCase, times(1)).ordenarPorPromedioNotas();
+    }
+
+    // Importaciones adicionales necesarias para esta prueba:
+    // import com.reto01.domain.specification.Specification;
+    // import static org.mockito.ArgumentMatchers.any; // Si no está ya
+
+    @Test
+    void buscarEstudiantesPorNombreConEspecificacion_cuandoNombreValido_debeDevolverEstudiantesFiltrados() throws Exception {
+        // Arrange
+        String nombreBusqueda = "Laura";
+        Estudiante estudianteLaura = new Estudiante("00X", "Laura", "12345", "laura@example.com", 9.0, "Ciencias", "Lab Avanzado");
+        List<Estudiante> listaEsperada = Collections.singletonList(estudianteLaura);
+
+        // Mockea el método del caso de uso que ahora usa Specification
+        // Usamos any(Specification.class) porque el controlador crea una instancia específica
+        // y no queremos que el test sea frágil a la instancia exacta, solo al tipo.
+        when(estudianteUseCase.buscarEstudiantesPorCriterio(any(Specification.class))).thenReturn(listaEsperada);
+
+        // Act & Assert
+        mockMvc.perform(get("/estudiantes/criterio/por-nombre").param("nombre", nombreBusqueda))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].nombre", is(nombreBusqueda)));
+
+        // Verifica que el método buscarEstudiantesPorCriterio fue llamado en el use case.
+        // Si quieres ser más específico sobre el tipo de Specification, necesitarías un ArgumentMatcher personalizado.
+        verify(estudianteUseCase, times(1)).buscarEstudiantesPorCriterio(any(Specification.class));
+    }
+
+    @Test
+    void buscarEstudiantesPorNombreConEspecificacion_cuandoNoEncuentra_debeDevolverListaVacia() throws Exception {
+        // Arrange
+        String nombreBusqueda = "NombreNoExistente";
+        List<Estudiante> listaVacia = Collections.emptyList();
+
+        when(estudianteUseCase.buscarEstudiantesPorCriterio(any(Specification.class))).thenReturn(listaVacia);
+
+        // Act & Assert
+        mockMvc.perform(get("/estudiantes/criterio/por-nombre").param("nombre", nombreBusqueda))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+
+        verify(estudianteUseCase, times(1)).buscarEstudiantesPorCriterio(any(Specification.class));
     }
 }

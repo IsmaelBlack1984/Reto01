@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.reto01.domain.model.Estudiante;
 import com.reto01.domain.port.in.EstudianteUseCase;
+import com.reto01.domain.specification.Specification; // Nueva importación
+import com.reto01.domain.specification.estudiante.NombreEqualsSpecification; // Nueva importación
 
 import java.util.List;
 
@@ -15,7 +17,6 @@ public class EstudianteController {
 
     private final EstudianteUseCase estudianteUseCase;
 
-    @Autowired
     public EstudianteController(EstudianteUseCase estudianteUseCase) {
         this.estudianteUseCase = estudianteUseCase;
     }
@@ -42,5 +43,11 @@ public class EstudianteController {
     @GetMapping("/estudiantes/ordenar-promedio")
     public List<Estudiante> ordenarPorPromedioNotas() {
         return estudianteUseCase.ordenarPorPromedioNotas();
+    }
+
+    @GetMapping("/estudiantes/criterio/por-nombre")
+    public List<Estudiante> buscarEstudiantesPorNombreConEspecificacion(@RequestParam String nombre) {
+        Specification<Estudiante> spec = new NombreEqualsSpecification(nombre);
+        return estudianteUseCase.buscarEstudiantesPorCriterio(spec);
     }
 }

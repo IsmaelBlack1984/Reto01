@@ -1,8 +1,13 @@
 package com.reto01.domain.service;
 
 import com.reto01.domain.model.Estudiante;
+import com.reto01.domain.specification.Specification; // Nueva importación
+import com.reto01.domain.specification.estudiante.NombreEqualsSpecification; // Nueva importación
+// import static org.mockito.ArgumentMatchers.any;
 import com.reto01.domain.port.out.EstudianteRepositoryPort;
 import org.junit.jupiter.api.BeforeEach;
+import org.mockito.ArgumentCaptor; // Nueva importación
+import static org.mockito.ArgumentMatchers.argThat; // Nueva importación
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -13,6 +18,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any; // Asegurar que any() está disponible
 
 @ExtendWith(MockitoExtension.class)
 class EstudianteServiceImplTest {
@@ -28,6 +34,67 @@ class EstudianteServiceImplTest {
     }
 
     // Aquí se agregarán los métodos de prueba más adelante
+
+    @Test
+    void buscarEstudiantesPorCriterio_conEspecificacionNombre_debeLlamarAlRepositorioYDevolverResultado() {
+        // Arrange
+        String nombreBusqueda = "Laura";
+        Specification<Estudiante> spec = new NombreEqualsSpecification(nombreBusqueda);
+        
+        List<Estudiante> estudiantesEsperados = new ArrayList<>();
+        estudiantesEsperados.add(new Estudiante("001", "Laura", "123", "laura@test.com", 8.0, "Arte", "Pintura"));
+        
+        when(estudianteRepositoryPort.find(spec)).thenReturn(estudiantesEsperados);
+
+        // Act
+        List<Estudiante> resultado = estudianteService.buscarEstudiantesPorCriterio(spec);
+
+        // Assert
+        assertEquals(estudiantesEsperados, resultado);
+        assertEquals(1, resultado.size());
+        assertEquals("Laura", resultado.get(0).getNombre());
+        verify(estudianteRepositoryPort, times(1)).find(spec);
+    }
+
+    @Test
+    void buscarEstudiantesPorCriterio_conEspecificacionNula_debeLlamarAlRepositorioYDevolverResultado() {
+        // Arrange
+        Specification<Estudiante> spec = null; // O una especificación que el repo trate como "todos"
+        
+        List<Estudiante> todosLosEstudiantes = new ArrayList<>();
+        todosLosEstudiantes.add(new Estudiante("001", "Laura", "123", "laura@test.com", 8.0, "Arte", "Pintura"));
+        todosLosEstudiantes.add(new Estudiante("002", "Carlos", "456", "carlos@test.com", 9.0, "Musica", "Guitarra"));
+
+        // Asumimos que el puerto del repositorio (y su mock) devolverá todos los estudiantes si la spec es null,
+        // basándonos en la implementación de InMemoryEstudianteRepositoryAdapter.find(null)
+        when(estudianteRepositoryPort.find(null)).thenReturn(todosLosEstudiantes);
+
+        // Act
+        List<Estudiante> resultado = estudianteService.buscarEstudiantesPorCriterio(spec);
+
+        // Assert
+        assertEquals(todosLosEstudiantes, resultado);
+        assertEquals(2, resultado.size());
+        verify(estudianteRepositoryPort, times(1)).find(null);
+    }
+
+    @Test
+    void buscarEstudiantesPorCriterio_conEspecificacionQueNoEncuentraNada_debeDevolverListaVacia() {
+        // Arrange
+        String nombreBusqueda = "NombreInexistente";
+        Specification<Estudiante> spec = new NombreEqualsSpecification(nombreBusqueda);
+        
+        List<Estudiante> listaVacia = new ArrayList<>();
+        
+        when(estudianteRepositoryPort.find(spec)).thenReturn(listaVacia);
+
+        // Act
+        List<Estudiante> resultado = estudianteService.buscarEstudiantesPorCriterio(spec);
+
+        // Assert
+        assertTrue(resultado.isEmpty());
+        verify(estudianteRepositoryPort, times(1)).find(spec);
+    }
 
     @Test
     void listarEstudiantes_debeLlamarAlRepositorio() {
@@ -66,141 +133,147 @@ class EstudianteServiceImplTest {
     void filtrarPorNombre_cuandoNombreExiste_debeDevolverEstudiantesFiltrados() {
         // Crear lista de estudiantes para simular el repositorio
         List<Estudiante> estudiantesSimulados = new ArrayList<>();
-        // Ajusta los datos de ejemplo al constructor de Estudiante:
-        // Estudiante(String numeroEstudiante, String nombre, String numeroCelular, String correoElectronico, double promedioNotas, String listadoAsignaturas, String seminariosTomados)
-        estudiantesSimulados.add(new Estudiante("001", "Carlos", "111222", "carlos@test.com", 8.0, "Mat,Fis", "IA"));
-        estudiantesSimulados.add(new Estudiante("002", "Carla", "333444", "carla@test.com", 9.0, "Quim", "BD"));
-        estudiantesSimulados.add(new Estudiante("003", "Pedro", "555666", "pedro@test.com", 7.0, "Hist", "Redes"));
+        Estudiante carlos = new Estudiante("001", "Carlos", "111222", "carlos@test.com", 8.0, "Mat,Fis", "IA");
+        List<Estudiante> listaFiltradaCarlos = List.of(carlos);
 
-        when(estudianteRepositoryPort.getEstudiantes()).thenReturn(estudiantesSimulados);
+        ArgumentCaptor<Specification<Estudiante>> specCaptor = ArgumentCaptor.forClass(Specification.class);
 
-        // Caso 1: Nombre exacto
+        // Configurar el mock para capturar la especificación y devolver la lista filtrada
+        when(estudianteRepositoryPort.find(specCaptor.capture())).thenReturn(listaFiltradaCarlos);
+        
+        // Caso 1: Nombre exacto "Carlos"
         List<Estudiante> resultado1 = estudianteService.filtrarPorNombre("Carlos");
+        
         assertEquals(1, resultado1.size());
         assertEquals("Carlos", resultado1.get(0).getNombre());
+        assertTrue(specCaptor.getValue() instanceof NombreEqualsSpecification);
+        assertEquals("Carlos", ((NombreEqualsSpecification) specCaptor.getValue()).getNombre());
+        // Verifica la llamada con el captor o con any(NombreEqualsSpecification.class)
+        verify(estudianteRepositoryPort, times(1)).find(specCaptor.getValue());
 
-        // Caso 2: Nombre con diferente capitalización
+
+        // Caso 2: Nombre con diferente capitalización "cArLoS"
+        // El mock ya está configurado para capturar la siguiente especificación
+        // y devolver la misma lista (la lógica de ignoreCase está en NombreEqualsSpecification)
         List<Estudiante> resultado2 = estudianteService.filtrarPorNombre("cArLoS");
         assertEquals(1, resultado2.size());
         assertEquals("Carlos", resultado2.get(0).getNombre());
+        assertTrue(specCaptor.getValue() instanceof NombreEqualsSpecification);
+        assertEquals("cArLoS", ((NombreEqualsSpecification) specCaptor.getValue()).getNombre());
+        // Verifica que find se llamó 2 veces en total
+        verify(estudianteRepositoryPort, times(2)).find(any(NombreEqualsSpecification.class));
     }
 
     @Test
     void filtrarPorNombre_cuandoNombreNoExiste_debeDevolverListaVacia() {
-        List<Estudiante> estudiantesSimulados = new ArrayList<>();
-        estudiantesSimulados.add(new Estudiante("001", "Carlos", "111222", "carlos@test.com", 8.0, "Mat,Fis", "IA"));
-        when(estudianteRepositoryPort.getEstudiantes()).thenReturn(estudiantesSimulados);
+        when(estudianteRepositoryPort.find(any(NombreEqualsSpecification.class))).thenReturn(new ArrayList<>());
 
         List<Estudiante> resultado = estudianteService.filtrarPorNombre("NombreInexistente");
         assertTrue(resultado.isEmpty());
+        // Verifica que se llamó a find con una NombreEqualsSpecification
+        verify(estudianteRepositoryPort, times(1)).find(argThat(spec -> 
+            spec instanceof NombreEqualsSpecification && 
+            ((NombreEqualsSpecification) spec).getNombre().equals("NombreInexistente")
+        ));
     }
 
     @Test
     void filtrarPorNombre_cuandoListaOriginalEstaVacia_debeDevolverListaVacia() {
-        when(estudianteRepositoryPort.getEstudiantes()).thenReturn(new ArrayList<>());
+        // El nombre del estudiante no importa aquí, ya que la lista devuelta siempre estará vacía.
+        when(estudianteRepositoryPort.find(any(NombreEqualsSpecification.class))).thenReturn(new ArrayList<>());
 
         List<Estudiante> resultado = estudianteService.filtrarPorNombre("CualquierNombre");
         assertTrue(resultado.isEmpty());
+        verify(estudianteRepositoryPort, times(1)).find(argThat(spec ->
+            spec instanceof NombreEqualsSpecification &&
+            ((NombreEqualsSpecification) spec).getNombre().equals("CualquierNombre")
+        ));
     }
 
     @Test
     void filtrarPorNumeroCelular_cuandoNumeroExiste_debeDevolverEstudiantesFiltrados() {
-        // Crear lista de estudiantes para simular el repositorio
-        List<Estudiante> estudiantesSimulados = new ArrayList<>();
-        // Ajusta los datos de ejemplo al constructor de Estudiante:
-        // Estudiante(String numeroEstudiante, String nombre, String numeroCelular, String correoElectronico, double promedioNotas, String listadoAsignaturas, String seminariosTomados)
-        estudiantesSimulados.add(new Estudiante("001", "Lucia", "123456789", "lucia@test.com", 8.5, "Arte", "Fotografia"));
-        estudiantesSimulados.add(new Estudiante("002", "Marcos", "987654321", "marcos@test.com", 7.5, "Musica", "Canto"));
-        estudiantesSimulados.add(new Estudiante("003", "Elena", "123123123", "elena@test.com", 9.0, "Deportes", "Natacion"));
-
-        when(estudianteRepositoryPort.getEstudiantes()).thenReturn(estudiantesSimulados);
+        Estudiante marcos = new Estudiante("002", "Marcos", "987654321", "marcos@test.com", 7.5, "Musica", "Canto");
+        List<Estudiante> listaFiltradaMarcos = List.of(marcos);
+        when(estudianteRepositoryPort.findByNumeroCelular("987654321")).thenReturn(listaFiltradaMarcos);
 
         List<Estudiante> resultado = estudianteService.filtrarPorNumeroCelular("987654321");
         assertEquals(1, resultado.size());
         assertEquals("Marcos", resultado.get(0).getNombre());
         assertEquals("987654321", resultado.get(0).getNumeroCelular());
+        verify(estudianteRepositoryPort, times(1)).findByNumeroCelular("987654321");
     }
 
     @Test
     void filtrarPorNumeroCelular_cuandoNumeroNoExiste_debeDevolverListaVacia() {
-        List<Estudiante> estudiantesSimulados = new ArrayList<>();
-        estudiantesSimulados.add(new Estudiante("001", "Lucia", "123456789", "lucia@test.com", 8.5, "Arte", "Fotografia"));
-        when(estudianteRepositoryPort.getEstudiantes()).thenReturn(estudiantesSimulados);
+        when(estudianteRepositoryPort.findByNumeroCelular("000000000")).thenReturn(new ArrayList<>());
 
         List<Estudiante> resultado = estudianteService.filtrarPorNumeroCelular("000000000");
         assertTrue(resultado.isEmpty());
+        verify(estudianteRepositoryPort, times(1)).findByNumeroCelular("000000000");
     }
 
     @Test
     void filtrarPorNumeroCelular_cuandoListaOriginalEstaVacia_debeDevolverListaVacia() {
-        when(estudianteRepositoryPort.getEstudiantes()).thenReturn(new ArrayList<>());
+        when(estudianteRepositoryPort.findByNumeroCelular(anyString())).thenReturn(new ArrayList<>());
 
         List<Estudiante> resultado = estudianteService.filtrarPorNumeroCelular("123456789");
         assertTrue(resultado.isEmpty());
+        verify(estudianteRepositoryPort, times(1)).findByNumeroCelular("123456789");
     }
 
     @Test
     void ordenarPorPromedioNotas_debeDevolverEstudiantesOrdenadosDescendentemente() {
-        // Crear lista de estudiantes para simular el repositorio
-        List<Estudiante> estudiantesSimulados = new ArrayList<>();
-        // Ajusta los datos de ejemplo al constructor de Estudiante:
-        // Estudiante(String numeroEstudiante, String nombre, String numeroCelular, String correoElectronico, double promedioNotas, String listadoAsignaturas, String seminariosTomados)
-        Estudiante estudiante1 = new Estudiante("001", "David", "111", "david@test.com", 7.5, "Hist", "Debate"); // Promedio más bajo
-        Estudiante estudiante2 = new Estudiante("002", "Sofia", "222", "sofia@test.com", 9.0, "Mat", "Olimpiadas Mat"); // Promedio más alto
-        Estudiante estudiante3 = new Estudiante("003", "Laura", "333", "laura@test.com", 8.5, "Fis", "Robotica");   // Promedio medio
+        Estudiante estudiante1 = new Estudiante("001", "David", "111", "david@test.com", 7.5, "Hist", "Debate");
+        Estudiante estudiante2 = new Estudiante("002", "Sofia", "222", "sofia@test.com", 9.0, "Mat", "Olimpiadas Mat");
+        Estudiante estudiante3 = new Estudiante("003", "Laura", "333", "laura@test.com", 8.5, "Fis", "Robotica");
 
-        estudiantesSimulados.add(estudiante1); // 7.5
-        estudiantesSimulados.add(estudiante2); // 9.0
-        estudiantesSimulados.add(estudiante3); // 8.5
+        List<Estudiante> estudiantesOrdenadosEsperados = new ArrayList<>();
+        estudiantesOrdenadosEsperados.add(estudiante2); // Sofia 9.0
+        estudiantesOrdenadosEsperados.add(estudiante3); // Laura 8.5
+        estudiantesOrdenadosEsperados.add(estudiante1); // David 7.5
 
-        when(estudianteRepositoryPort.getEstudiantes()).thenReturn(estudiantesSimulados);
+        when(estudianteRepositoryPort.findAllByOrderByPromedioNotasDesc()).thenReturn(estudiantesOrdenadosEsperados);
 
         List<Estudiante> resultado = estudianteService.ordenarPorPromedioNotas();
 
         assertEquals(3, resultado.size());
-        // Verificar el orden descendente por promedioNotas
-        assertEquals("Sofia", resultado.get(0).getNombre()); // Promedio 9.0
-        assertEquals("Laura", resultado.get(1).getNombre()); // Promedio 8.5
-        assertEquals("David", resultado.get(2).getNombre()); // Promedio 7.5
+        assertEquals("Sofia", resultado.get(0).getNombre()); 
+        assertEquals("Laura", resultado.get(1).getNombre()); 
+        assertEquals("David", resultado.get(2).getNombre()); 
+        verify(estudianteRepositoryPort, times(1)).findAllByOrderByPromedioNotasDesc();
     }
 
     @Test
     void ordenarPorPromedioNotas_cuandoListaEstaVacia_debeDevolverListaVacia() {
-        when(estudianteRepositoryPort.getEstudiantes()).thenReturn(new ArrayList<>());
+        when(estudianteRepositoryPort.findAllByOrderByPromedioNotasDesc()).thenReturn(new ArrayList<>());
 
         List<Estudiante> resultado = estudianteService.ordenarPorPromedioNotas();
         assertTrue(resultado.isEmpty());
+        verify(estudianteRepositoryPort, times(1)).findAllByOrderByPromedioNotasDesc();
     }
 
     @Test
     void ordenarPorPromedioNotas_conPromediosIguales_debeMantenerOrdenRelativoEstable() {
-        // Crear lista de estudiantes con algunos promedios iguales
-        List<Estudiante> estudiantesSimulados = new ArrayList<>();
         Estudiante estudianteA = new Estudiante("00A", "Ana", "444", "ana@test.com", 8.0, "Lit", "Escritura");
-        Estudiante estudianteB = new Estudiante("00B", "Bernardo", "555", "bernardo@test.com", 9.5, "Bio", "Ecologia"); // Más alto
-        Estudiante estudianteC = new Estudiante("00C", "Clara", "666", "clara@test.com", 8.0, "Geo", "Viajes");    // Igual que Ana
-        Estudiante estudianteD = new Estudiante("00D", "Daniel", "777", "daniel@test.com", 7.0, "EdFis", "Futbol"); // Más bajo
+        Estudiante estudianteB = new Estudiante("00B", "Bernardo", "555", "bernardo@test.com", 9.5, "Bio", "Ecologia"); 
+        Estudiante estudianteC = new Estudiante("00C", "Clara", "666", "clara@test.com", 8.0, "Geo", "Viajes");    
+        Estudiante estudianteD = new Estudiante("00D", "Daniel", "777", "daniel@test.com", 7.0, "EdFis", "Futbol"); 
 
-        // Añadir en un orden específico para ver si la estabilidad (si existe en Stream.sorted()) se mantiene para iguales
-        estudiantesSimulados.add(estudianteA); // Ana 8.0
-        estudiantesSimulados.add(estudianteB); // Bernardo 9.5
-        estudiantesSimulados.add(estudianteC); // Clara 8.0
-        estudiantesSimulados.add(estudianteD); // Daniel 7.0
-
-        when(estudianteRepositoryPort.getEstudiantes()).thenReturn(estudiantesSimulados);
+        List<Estudiante> estudiantesOrdenadosEsperados = new ArrayList<>();
+        estudiantesOrdenadosEsperados.add(estudianteB); // Bernardo 9.5
+        // Asumimos un orden estable para los iguales, por ejemplo, Ana antes que Clara si así se mockea
+        estudiantesOrdenadosEsperados.add(estudianteA); // Ana 8.0 
+        estudiantesOrdenadosEsperados.add(estudianteC); // Clara 8.0
+        estudiantesOrdenadosEsperados.add(estudianteD); // Daniel 7.0
+        
+        when(estudianteRepositoryPort.findAllByOrderByPromedioNotasDesc()).thenReturn(estudiantesOrdenadosEsperados);
         List<Estudiante> resultado = estudianteService.ordenarPorPromedioNotas();
 
         assertEquals(4, resultado.size());
-        assertEquals("Bernardo", resultado.get(0).getNombre()); // 9.5
-        // Para los de 8.0, el orden podría ser Ana, Clara o Clara, Ana.
-        // La especificación de `sorted()` no garantiza la estabilidad para elementos iguales a menos que el comparador lo haga.
-        // Comparator.comparingDouble().reversed() no es inherentemente estable.
-        // Solo verificaremos que los elementos con 8.0 estén después de 9.5 y antes de 7.0
-        assertTrue(resultado.get(1).getPromedioNotas() == 8.0);
-        assertTrue(resultado.get(2).getPromedioNotas() == 8.0);
-        // Y que los nombres sean los correctos para esos promedios
-        assertTrue( (resultado.get(1).getNombre().equals("Ana") && resultado.get(2).getNombre().equals("Clara")) ||
-                      (resultado.get(1).getNombre().equals("Clara") && resultado.get(2).getNombre().equals("Ana")) );
-        assertEquals("Daniel", resultado.get(3).getNombre());   // 7.0
+        assertEquals("Bernardo", resultado.get(0).getNombre()); 
+        assertEquals("Ana", resultado.get(1).getNombre()); 
+        assertEquals("Clara", resultado.get(2).getNombre()); 
+        assertEquals("Daniel", resultado.get(3).getNombre());   
+        verify(estudianteRepositoryPort, times(1)).findAllByOrderByPromedioNotasDesc();
     }
 }
