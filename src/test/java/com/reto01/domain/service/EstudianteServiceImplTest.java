@@ -3,9 +3,11 @@ package com.reto01.domain.service;
 import com.reto01.domain.model.Estudiante;
 import com.reto01.domain.specification.Specification; // Nueva importación
 import com.reto01.domain.specification.estudiante.NombreEqualsSpecification; // Nueva importación
-// import static org.mockito.ArgumentMatchers.any; // any() no se usa directamente en los nuevos tests, pero es bueno tenerlo
+// import static org.mockito.ArgumentMatchers.any;
 import com.reto01.domain.port.out.EstudianteRepositoryPort;
 import org.junit.jupiter.api.BeforeEach;
+import org.mockito.ArgumentCaptor; // Nueva importación
+import static org.mockito.ArgumentMatchers.argThat; // Nueva importación
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -16,6 +18,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any; // Asegurar que any() está disponible
 
 @ExtendWith(MockitoExtension.class)
 class EstudianteServiceImplTest {
@@ -130,43 +133,61 @@ class EstudianteServiceImplTest {
     void filtrarPorNombre_cuandoNombreExiste_debeDevolverEstudiantesFiltrados() {
         // Crear lista de estudiantes para simular el repositorio
         List<Estudiante> estudiantesSimulados = new ArrayList<>();
-        // Ajusta los datos de ejemplo al constructor de Estudiante:
-        // Estudiante(String numeroEstudiante, String nombre, String numeroCelular, String correoElectronico, double promedioNotas, String listadoAsignaturas, String seminariosTomados)
         Estudiante carlos = new Estudiante("001", "Carlos", "111222", "carlos@test.com", 8.0, "Mat,Fis", "IA");
         List<Estudiante> listaFiltradaCarlos = List.of(carlos);
 
-        when(estudianteRepositoryPort.findByNombre("Carlos")).thenReturn(listaFiltradaCarlos);
-        when(estudianteRepositoryPort.findByNombre("cArLoS")).thenReturn(listaFiltradaCarlos);
+        ArgumentCaptor<Specification<Estudiante>> specCaptor = ArgumentCaptor.forClass(Specification.class);
 
-        // Caso 1: Nombre exacto
+        // Configurar el mock para capturar la especificación y devolver la lista filtrada
+        when(estudianteRepositoryPort.find(specCaptor.capture())).thenReturn(listaFiltradaCarlos);
+        
+        // Caso 1: Nombre exacto "Carlos"
         List<Estudiante> resultado1 = estudianteService.filtrarPorNombre("Carlos");
+        
         assertEquals(1, resultado1.size());
         assertEquals("Carlos", resultado1.get(0).getNombre());
-        verify(estudianteRepositoryPort, times(1)).findByNombre("Carlos");
+        assertTrue(specCaptor.getValue() instanceof NombreEqualsSpecification);
+        assertEquals("Carlos", ((NombreEqualsSpecification) specCaptor.getValue()).getNombre());
+        // Verifica la llamada con el captor o con any(NombreEqualsSpecification.class)
+        verify(estudianteRepositoryPort, times(1)).find(specCaptor.getValue());
 
-        // Caso 2: Nombre con diferente capitalización
+
+        // Caso 2: Nombre con diferente capitalización "cArLoS"
+        // El mock ya está configurado para capturar la siguiente especificación
+        // y devolver la misma lista (la lógica de ignoreCase está en NombreEqualsSpecification)
         List<Estudiante> resultado2 = estudianteService.filtrarPorNombre("cArLoS");
         assertEquals(1, resultado2.size());
         assertEquals("Carlos", resultado2.get(0).getNombre());
-        verify(estudianteRepositoryPort, times(1)).findByNombre("cArLoS");
+        assertTrue(specCaptor.getValue() instanceof NombreEqualsSpecification);
+        assertEquals("cArLoS", ((NombreEqualsSpecification) specCaptor.getValue()).getNombre());
+        // Verifica que find se llamó 2 veces en total
+        verify(estudianteRepositoryPort, times(2)).find(any(NombreEqualsSpecification.class));
     }
 
     @Test
     void filtrarPorNombre_cuandoNombreNoExiste_debeDevolverListaVacia() {
-        when(estudianteRepositoryPort.findByNombre("NombreInexistente")).thenReturn(new ArrayList<>());
+        when(estudianteRepositoryPort.find(any(NombreEqualsSpecification.class))).thenReturn(new ArrayList<>());
 
         List<Estudiante> resultado = estudianteService.filtrarPorNombre("NombreInexistente");
         assertTrue(resultado.isEmpty());
-        verify(estudianteRepositoryPort, times(1)).findByNombre("NombreInexistente");
+        // Verifica que se llamó a find con una NombreEqualsSpecification
+        verify(estudianteRepositoryPort, times(1)).find(argThat(spec -> 
+            spec instanceof NombreEqualsSpecification && 
+            ((NombreEqualsSpecification) spec).getNombre().equals("NombreInexistente")
+        ));
     }
 
     @Test
     void filtrarPorNombre_cuandoListaOriginalEstaVacia_debeDevolverListaVacia() {
-        when(estudianteRepositoryPort.findByNombre(anyString())).thenReturn(new ArrayList<>());
+        // El nombre del estudiante no importa aquí, ya que la lista devuelta siempre estará vacía.
+        when(estudianteRepositoryPort.find(any(NombreEqualsSpecification.class))).thenReturn(new ArrayList<>());
 
         List<Estudiante> resultado = estudianteService.filtrarPorNombre("CualquierNombre");
         assertTrue(resultado.isEmpty());
-        verify(estudianteRepositoryPort, times(1)).findByNombre("CualquierNombre");
+        verify(estudianteRepositoryPort, times(1)).find(argThat(spec ->
+            spec instanceof NombreEqualsSpecification &&
+            ((NombreEqualsSpecification) spec).getNombre().equals("CualquierNombre")
+        ));
     }
 
     @Test
